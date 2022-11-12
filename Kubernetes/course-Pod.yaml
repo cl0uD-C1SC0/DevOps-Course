@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: course-pod
+spec:
+  containers:
+  - name: app
+    image: nginx
+    volumeMounts:
+      - name: local-persistent-storage
+        mountPath: /tmp
+  volumes:
+    - name: local-persistent-storage
+      persistentVolumeClaim:
+        claimName: course-pvc

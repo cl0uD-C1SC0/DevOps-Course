@@ -14,5 +14,5 @@ spec:
         app: course-deployment
     spec:
       containers:
-      - name: funcionario-container
+      - name: course-container
         image: nginx
