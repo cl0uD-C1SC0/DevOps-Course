@@ -3,3 +3,4 @@ kind: ConfigMap
 metadata:
   name: course-cfg
 data:
+  aula: "boa"
