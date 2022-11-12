@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment 
+metadata:
+  name: course-deployment
+  namespace: curso
+spec:
+  selector:
+    matchLabels:
+      app: course-deployment
+  replicas: 1
+  template:
+    metadata:
+      matchLabels:
+        app: course-deployment
+  spec:
+    containers:
+    - name: course-deployment-container
+      image: nginx
+    env:
+      - name: HELLO
+        value: HelloWorld
