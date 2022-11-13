@@ -30,7 +30,7 @@ function docker_install ()
     $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
     sudo apt-get update
     sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y
-    sudo usermod -a G docker $_PC_NAME
+    sudo usermod -a -G docker $_PC_NAME
     sudo systemctl restart docker
     sudo systemctl enable docker
     echo "CHECKING DOCKER VERSION: "
