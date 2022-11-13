@@ -23,3 +23,8 @@ Execute o install.sh
 ```
 bash install.sh
 ```
+
+## Comando Docker compose
+```
+docker-compose up
+```
