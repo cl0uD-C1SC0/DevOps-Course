@@ -1,0 +1,5 @@
+express
+mongoose
+socket.io
+dotenv
+http

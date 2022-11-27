@@ -40,11 +40,13 @@ sudo apt-get update -y
 sudo apt-get -f install -y
 java --version
 sudo dpkg -i openjdk-11-jre-headless_11.0.17+8-1ubuntu2~22.04_amd64.deb
+
 # JENKINS INSTALL:
 curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo tee   /usr/share/keyrings/jenkins-keyring.asc > /dev/null
 echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc]   https://pkg.jenkins.io/debian-stable binary/ | sudo tee   /etc/apt/sources.list.d/jenkins.list > /dev/null
 sudo apt-get update -y
 sudo apt-get install jenkins -y
+
 # IF Get ERROR TO INSTALL JENKINS: 
 sudo mv /var/lib/dpkg/info /var/lib/dpkg/info_silent
 sudo mkdir /var/lib/dpkg/info

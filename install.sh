@@ -172,24 +172,23 @@ read -p "You want install Jenkins server in this VM? (y/N): " choice
 if [[ $choice == "y" ]] || [[ $choice == "Y" ]]; then
     cd /tmp
     echo "Checking if this VM have OpenJDK 11 or 17..."
-    sleep 3
+    sleep 2
     which java > /tmp/package.log
     if [[ $? != 0 ]]; then
         echo "OPENJDK NOT INSTALLED OR FAILED TO INSTALL."
         echo "Jenkins FAILED FAILED" >> /tmp/report.txt
-        status_final
-        exit
+        status_final && exit 1
     else
         clear
         jenkins_install
         clear
-        status_final
+        status_final && exit 0
     fi
 elif [[ $choice == "n" ]] || [[ $choice == "N" ]]; then
     echo "Aborting Jenkins install... "
-    sleep 3
+    sleep 2
     clear
-    status_final
+    status_final && exit 0
 else 
     echo "Invalid Option, try again..." && exit 1
 fi
