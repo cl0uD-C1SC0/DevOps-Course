@@ -1,20 +1,19 @@
 pipeline {
     agent any
     environment {
-
-        /// SECRETS TO CONFIGURE ON JENKINS CREDENTIALS
-        ghp_token       = credentials('github_token') // Github Auth Token
-        sny_token       = credentials('snyk_token') // Snyk Auth Token
-        context          = credentials('mykubeconfig') // Kubectl Config Context (Minikube)
-
-        /// DO NOT MODIFY ENVS BELOW: 
         /// GIT COMMIT
         gitCommit       = "${env.GIT_COMMIT}"
         shortGitCommit  = "${gitCommit[0..6]}"
         /// APP_NAME
         APP_NAME       = "${env.JOB_NAME}"
+        /// GITHUB TOKEN
+        ghp_token       = credentials('github_token')
+
+        /// DOCKER SNYK TOKEN
+        sny_token       = credentials('snyk_token')
         /// GITHUB BRANCH
         GIT_BRANCH_NAME = sh(returnStdout: true, script: 'echo $GIT_BRANCH | cut -d "/" -f 2').trim()
+
         /// CONFIGURING ENVIRONMENT VARIABLES
         GIT_USER        = sh(script: '''echo $GIT_URL | cut -d"/" -f4''', returnStdout: true).trim()
         BUILD_ENV       = sh(script: '''
@@ -83,18 +82,15 @@ pipeline {
         }
         stage ('DOCKER SCAN') {
             steps {
-                catchError {
-                    sh '''#!/bin/bash
-                    echo "Docker Scan STEP" | figlet
-                    mkdir -p ~/.docker/cli-plugins && \
-                    curl https://github.com/docker/scan-cli-plugin/releases/latest/download/docker-scan_linux_amd64 -L -s -S -o ~/.docker/cli-plugins/docker-scan &&\
-                    chmod +x ~/.docker/cli-plugins/docker-scan
-                    echo y | docker scan --login --token ${sny_token}
-                    echo y | docker scan josegabriel/${GIT_BRANCH_NAME}:${shortGitCommit}
-                    exit 0
+                sh '''#!/bin/bash
+                echo "Docker Scan STEP" | figlet
+                mkdir -p ~/.docker/cli-plugins && \
+                curl https://github.com/docker/scan-cli-plugin/releases/latest/download/docker-scan_linux_amd64 -L -s -S -o ~/.docker/cli-plugins/docker-scan &&\
+                chmod +x ~/.docker/cli-plugins/docker-scan
+
+                docker scan --login --token ${sny_token}
+                docker scan josegabriel/${GIT_BRANCH_NAME}:${shortGitCommit}
                 '''
-                }
-               echo currentBuild.result
             }
         }
         stage ('DOCKER PUSH') {
@@ -110,50 +106,45 @@ pipeline {
             steps {
                 sh '''#!/bin/bash
                 echo "K8s Update files" | figlet
-                GIT_REPO="${APP_NAME}${BUILD_ENV}"
-                git clone https://oauth2:${ghp_token}@github.com/${GIT_USER}/$GIT_REPO
-                git config --global user.email "jenkins@pipeline"
-                git config --global user.name "Jenkins Pipeline"
-
+                git clone https://github.com/${GIT_USER}/${APP_NAME}${BUILD_ENV}
                 cd ${APP_NAME}${BUILD_ENV}
 
                 if [[ $BUILD_ENV == '-prd' ]]; then
+
                     git checkout dev
+
                     # CAT OLD FILE
                     echo "OLD FILE" | figlet
                     cat *-dp.yaml
                     echo "=======================================>"
-                    echo "NEW FILE" | figlet
-                    cat *-dp.yaml | grep "/" | grep "image" | sed -i "s|/$GIT_BRANCH_NAME:.*|/$GIT_BRANCH_NAME:$shortGitCommit|g" *-dp.yaml
+                    # CAT NEW FILE
+                    # sed =>
                     cat *-dp.yaml 
+
                     # COMMIT CHANGES
                     git add .
                     git commit -am "Jenkins CICD - Uploaded ${shortGitCommit}"
                     git push
+
+
                     # CREATE PR
+                    echo $ghp_token > mytoken.txt 
+                    gh auth login --with-token < mytoken.txt
+                    rm -rf mytoken.txt
                     gh pr create --title "Jenkins CICD - Uploaded ${shortGitCommit}" --body "Jenkins pipeline Updated new image - ${GIT_BRANCH_NAME}:${shortGitCommit}" --reviewer JenkinsCI --base main --head dev
-                    cd ..
-                    rm -rf ${APP_NAME}${BUILD_ENV}
+
                 else
-                    # CAT OLD FILE
-                    echo "OLD FILE" | figlet
-                    cat *-dp.yaml
-                    echo "=======================================>"
-                    echo "NEW FILE" | figlet
-                    cat *-dp.yaml | grep "/" | grep "image" | sed -i "s|/$GIT_BRANCH_NAME:.*|/$GIT_BRANCH_NAME:$shortGitCommit|g" *-dp.yaml
-                    cat *-dp.yaml 
-                    # COMMIT CHANGES
-                    git add .
-                    git commit -am "Jenkins CICD - Uploaded ${shortGitCommit}"
-                    git push
+
+                    echo "HOMOLOGG"
+
                 fi
                 '''
             }
         }
-        stage ('CONNECT TO THE CLUSTER') {
+        stage ('ArgoCD CHECKS') {
             steps {
                 sh '''#!/bin/bash
-                sudo kubectl --kubeconfig $context get pods
+                echo "ArgoCD Checks" | figlet
                 '''
             }
         }
