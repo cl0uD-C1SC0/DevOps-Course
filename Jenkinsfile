@@ -9,6 +9,9 @@ pipeline {
         /// GITHUB TOKEN
         ghp_token       = credentials('github_token')
 
+        /// KUBECTL CONFIG
+        MY_KUBECONFIG = credentials('my-kubeconfig')
+
         /// DOCKER SNYK TOKEN
         sny_token       = credentials('snyk_token')
         /// GITHUB BRANCH
@@ -139,6 +142,11 @@ pipeline {
 
                 fi
                 '''
+            }
+        }
+        stage ('Kubectl CONFIG') {
+            steps {
+                sh("kubectl --kubeconfig $MY_KUBECONFIG get pods")
             }
         }
         stage ('ArgoCD CHECKS') {
