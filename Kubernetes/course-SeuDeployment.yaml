@@ -2,16 +2,47 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: <nome-do-seu-deployment>
+  namespace: <namespace>
+  labels:
+    key: "<valor>"
 spec:
   selector:
     matchLabels:
       app: <nome-do-seu-deployment>
-  replicas: 1
+  replicas: <valor>
+  revisionHistoryLimit: <valor>
   template:
     metadata:
       labels:
         app: <nome-do-seu-deployment>
+        key: "<valor>"
     spec:
       containers:
       - name: course-container
         image: <sua-imagem>
+        imagePullPolicy: Always
+        resources:
+          limits:
+            cpu: "<valor>"
+            memory: "<valor>"
+          requests:
+            cpu: "<valor>"
+            memory: "<valor>"
+        livenessProbe:
+          tcpSocket:
+            port: <porta>
+          initialDelaySeconds: <valor>
+          periodSeconds: <valor>
+        readinessProbe:
+          tcpSocket:
+            port: <porta>
+          initialDelaySeconds: <valor>
+          periodSeconds: <valor>
+        envFrom:
+        - secretRef:
+            name: <nome-arquivo-de-secret>
+        - configMapRef:
+            name: <nome-arquivo-de-configmap>
+      imagePullSecrets:
+        - name: <nome-da-secret-do-docker-registry>
+        
