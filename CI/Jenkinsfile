@@ -8,9 +8,9 @@ pipeline {
         APP_NAME       = "${env.JOB_NAME}"
         /// GITHUB TOKEN
         ghp_token       = credentials('github_token')
+        DOCKER_USER     = "josegabriel"
 
         /// KUBECTL CONFIG
-        MY_KUBECONFIG = credentials('my-kubeconfig')
 
         /// DOCKER SNYK TOKEN
         sny_token       = credentials('snyk_token')
@@ -34,31 +34,28 @@ pipeline {
                         
     }
     stages {
-        stage ('ENVIRONMENT CONFIG') {
+        stage ('GENERAL CONFIG') {
             steps {
                 sh '''#!/bin/bash
                     echo "Setup initial downloads"
-                    sudo apt-get install figlet -y
 
                     echo "INSTALLING GH CLI"
-                    type -p curl >/dev/null || sudo apt install curl -y
-                    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
-                    && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
-                    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-                    && sudo apt update \
-                    && sudo apt install gh -y
+                    sudo yum-config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+                    sudo yum install gh
 
-                    echo "INSTALLING ArgoCD CLI"
 
-                    echo "INSTALLING KUBECTL CLI"
+                    echo "TEST KUBERNETES CONFIG" | figlet
+                    aws eks update-kubeconfig --name josegabriel-EKS-Cluster
+                    kubectl get nodes
 
 
                     echo "SYSTEM ENVIRONMENTS:             " | figlet 
-                    echo "============================     " | figlet 
+                    echo "============================     " | figlet
                     echo "APP    = $APP_NAME               "
                     echo "COMMIT = $shortGitCommit         "
                     echo "BRANCH = $GIT_BRANCH_NAME        "
-                    echo "TEST  = https://github.com/${GIT_USER}/${APP_NAME}${BUILD_ENV}"
+                    echo "REPO   = https://github.com/${GIT_USER}/${APP_NAME}${BUILD_ENV}"
+                    echo "DCK    = ${DOCKER_USER}/$GIT_BRANCH_NAME" 
                 
                 '''
             }
@@ -85,15 +82,22 @@ pipeline {
         }
         stage ('DOCKER SCAN') {
             steps {
-                sh '''#!/bin/bash
-                echo "Docker Scan STEP" | figlet
-                mkdir -p ~/.docker/cli-plugins && \
-                curl https://github.com/docker/scan-cli-plugin/releases/latest/download/docker-scan_linux_amd64 -L -s -S -o ~/.docker/cli-plugins/docker-scan &&\
-                chmod +x ~/.docker/cli-plugins/docker-scan
+                script {
+                    try {
+                        sh '''#!/bin/bash
+                        echo "Docker Scan STEP" | figlet
+                        mkdir -p ~/.docker/cli-plugins && \
+                        curl https://github.com/docker/scan-cli-plugin/releases/latest/download/docker-scan_linux_amd64 -L -s -S -o ~/.docker/cli-plugins/docker-scan &&\
+                        chmod +x ~/.docker/cli-plugins/docker-scan
 
-                docker scan --login --token ${sny_token}
-                docker scan josegabriel/${GIT_BRANCH_NAME}:${shortGitCommit}
-                '''
+                        docker scan --login --token ${sny_token}
+                        echo y | docker scan josegabriel/${GIT_BRANCH_NAME}:${shortGitCommit}
+                        '''
+                    } catch (err) {
+                        echo err.getMessage()
+                    }
+                    echo currentBuild.result
+                }
             }
         }
         stage ('DOCKER PUSH') {
@@ -108,8 +112,11 @@ pipeline {
         stage ('K8S Update files') {
             steps {
                 sh '''#!/bin/bash
+                git config --global user.email "jenkins-server@jenkins.com"
+                git config --global user.name "Jenkins Server"
                 echo "K8s Update files" | figlet
-                git clone https://github.com/${GIT_USER}/${APP_NAME}${BUILD_ENV}
+                rm -rf ${APP_NAME}${BUILD_ENV}
+                git clone https://oauth2:${ghp_token}@github.com/${GIT_USER}/${APP_NAME}${BUILD_ENV}
                 cd ${APP_NAME}${BUILD_ENV}
 
                 if [[ $BUILD_ENV == '-prd' ]]; then
@@ -117,12 +124,13 @@ pipeline {
                     git checkout dev
 
                     # CAT OLD FILE
-                    echo "OLD FILE" | figlet
+                    echo "OLD FILE" | figlet 
                     cat *-dp.yaml
                     echo "=======================================>"
-                    # CAT NEW FILE
+                    echo "NEW FILE" | figlet 
                     # sed =>
-                    cat *-dp.yaml 
+                    cat *-dp.yaml | grep "image" | sed -i "s|$DOCKER_USER/$GIT_BRANCH_NAME:.*|$DOCKER_USER/$GIT_BRANCH_NAME:$shortGitCommit|g" *-dp.yaml
+                    cat *-dp.yaml
 
                     # COMMIT CHANGES
                     git add .
@@ -134,19 +142,28 @@ pipeline {
                     echo $ghp_token > mytoken.txt 
                     gh auth login --with-token < mytoken.txt
                     rm -rf mytoken.txt
-                    gh pr create --title "Jenkins CICD - Uploaded ${shortGitCommit}" --body "Jenkins pipeline Updated new image - ${GIT_BRANCH_NAME}:${shortGitCommit}" --reviewer JenkinsCI --base main --head dev
+                    gh pr create --title "Jenkins CICD - Uploaded ${shortGitCommit}" --body "Jenkins pipeline Updated new image - ${GIT_BRANCH_NAME}:${shortGitCommit}" --base main --head dev
 
                 else
 
-                    echo "HOMOLOGG"
+                    # CAT OLD FILE
+                    echo "OLD FILE" | figlet 
+                    cat *-dp.yaml
+                    echo "=======================================>"
+                    echo "NEW FILE" | figlet 
+                    # sed =>
+                    cat *-dp.yaml | grep "image" | sed -i "s|$DOCKER_USER/$GIT_BRANCH_NAME:.*|$DOCKER_USER/$GIT_BRANCH_NAME:$shortGitCommit|g" *-dp.yaml
+                    cat *-dp.yaml 
+
+                    # COMMIT CHANGES
+                    git add .
+                    git commit -am "Jenkins CICD - Uploaded ${shortGitCommit}"
+                    git push
 
                 fi
+                cd ..
+                rm -rf ${APP_NAME}${BUILD_ENV}
                 '''
-            }
-        }
-        stage ('Kubectl CONFIG') {
-            steps {
-                sh("kubectl --kubeconfig $MY_KUBECONFIG get pods")
             }
         }
         stage ('ArgoCD CHECKS') {
@@ -155,7 +172,6 @@ pipeline {
                 echo "ArgoCD Checks" | figlet
                 '''
             }
-        }
+        }        
     }
 }
-    

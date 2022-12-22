@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webapp-dp
+  namespace: webapp
+spec:
+  selector:
+    matchLabels:
+      app: webapp
+  replicas: 1
+  revisionHistoryLimit: 0
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      containers:
+        - name: webapp-container
+          image: josegabriel/main:f57eb11
+          imagePullPolicy: Always
+      imagePullSecrets:
+        - name: docker-registry
