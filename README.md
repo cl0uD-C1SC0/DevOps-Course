@@ -24,3 +24,4 @@ Todo o conteúdo técnico utilizado como base para as aulas se encontram neste r
 | -------- |-------- |-------- |
 José Silva|siqueirajosesantos19@gmail.com|<a href="https://www.linkedin.com/in/jgsiqueiraa/"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" width="100" hspace="0" vspace="15"></a>|
 Danilo Luciano|danilo.sibov@gmail.com|<a href="https://www.linkedin.com/in/daniloluciano/"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" width="100" hspace="0" vspace="15"></a>|
+Thiago Nascimento|thiago.r.nascimento@hotmail.com|<a href="https://www.linkedin.com/in/thiagorochanascimento/"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" width="100" hspace="0" vspace="15"></a>|
